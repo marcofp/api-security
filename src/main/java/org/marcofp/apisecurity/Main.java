@@ -7,9 +7,12 @@ import org.dalesbred.*;
 import org.dalesbred.result.EmptyResultException;
 import org.h2.jdbcx.*;
 import org.json.*;
+import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Spark;
+import com.google.common.util.concurrent.*;
+
 
 import static spark.Spark.*;
 
@@ -31,12 +34,23 @@ public class Main {
         Spark.post("/spaces",
                 spaceController::createSpace);
 
-        before(((request, response) -> {
+        var rateLimiter = RateLimiter.create(2.0d);
+
+        final Filter rateLimiterFilter = ((request, response) -> {
+            if (!rateLimiter.tryAcquire()){
+                response.header("Retry-After", "2");
+                halt(429);
+            }
+        });
+
+
+        final Filter contentFilter = (request, response) -> {
             if (request.requestMethod().equals("POST") && !"application/json".equals(request.contentType())) {
                 halt(415, new JSONObject().put("error", "Only application/json supported").toString());
             }
 
-            }));
+        };
+        before(rateLimiterFilter, contentFilter);
 
         after((request, response) -> {
             response.type("application/json");
