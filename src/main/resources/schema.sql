@@ -1,3 +1,9 @@
+CREATE TABLE users
+(
+    user_id VARCHAR(30) PRIMARY KEY,
+    pw_hash VARCHAR(255) NOT NULL
+);
+
 CREATE TABLE spaces
 (
     space_id INT PRIMARY KEY,
@@ -7,8 +13,8 @@ CREATE TABLE spaces
 CREATE SEQUENCE space_id_seq;
 CREATE TABLE messages
 (
-    space_id INT NOT NULL REFERENCES spaces (space_id),
-    msg_id INT PRIMARY KEY,
+    space_id INT           NOT NULL REFERENCES spaces (space_id),
+    msg_id   INT PRIMARY KEY,
     author   VARCHAR(30)   NOT NULL,
     msg_time TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     msg_text VARCHAR(1024) NOT NULL
@@ -19,4 +25,5 @@ CREATE UNIQUE INDEX space_name_idx ON spaces (name);
 
 CREATE USER natter_api_user PASSWORD 'password';
 GRANT SELECT, INSERT ON spaces, messages TO natter_api_user;
+GRANT SELECT, INSERT ON users TO natter_api_user;
 

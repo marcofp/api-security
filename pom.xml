@@ -19,6 +19,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
         <dalesbred.version>1.3.2</dalesbred.version>
         <slf4j-simple.version>1.7.30</slf4j-simple.version>
         <guava.version>29.0-jre</guava.version>
+        <scrypt.version>1.4.0</scrypt.version>
     </properties>
     <dependencies>
         <dependency>
@@ -51,6 +52,10 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.lambdaworks</groupId>
+            <artifactId>scrypt</artifactId>
+            <version>${scrypt.version}</version>
+        </dependency>
     </dependencies>
 </project>

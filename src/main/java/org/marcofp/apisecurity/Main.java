@@ -7,6 +7,7 @@ import org.dalesbred.*;
 import org.dalesbred.result.EmptyResultException;
 import org.h2.jdbcx.*;
 import org.json.*;
+import org.marcofp.apisecurity.controller.UserController;
 import spark.Filter;
 import spark.Request;
 import spark.Response;
@@ -20,6 +21,8 @@ import static spark.Spark.*;
 public class Main {
 
     public static void main(String... args) throws Exception {
+        secure("localhost.p12", "changeit", null, null);
+
         var datasource = JdbcConnectionPool.create(
                 "jdbc:h2:mem:natter", "natter", "password");
         var database = Database.forDataSource(datasource);
@@ -31,13 +34,16 @@ public class Main {
 
 
         var spaceController = new SpaceController(database);
-        Spark.post("/spaces",
-                spaceController::createSpace);
+        Spark.post("/spaces", spaceController::createSpace);
+        post("/spaces/:spaceId/messages", spaceController::postMessage);
+
+        var userController = new UserController(database);
+        Spark.post("/users", userController::registerUser);
 
         var rateLimiter = RateLimiter.create(2.0d);
 
         final Filter rateLimiterFilter = ((request, response) -> {
-            if (!rateLimiter.tryAcquire()){
+            if (!rateLimiter.tryAcquire()) {
                 response.header("Retry-After", "2");
                 halt(429);
             }
@@ -50,7 +56,7 @@ public class Main {
             }
 
         };
-        before(rateLimiterFilter, contentFilter);
+        before(rateLimiterFilter, contentFilter, userController::authenticate);
 
         after((request, response) -> {
             response.type("application/json");
