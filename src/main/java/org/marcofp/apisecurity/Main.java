@@ -7,6 +7,7 @@ import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.marcofp.apisecurity.controller.*;
+import org.marcofp.apisecurity.filter.CorsFilter;
 import org.marcofp.apisecurity.token.CookieTokenStore;
 import org.marcofp.apisecurity.token.TokenStore;
 import spark.Request;
@@ -15,6 +16,7 @@ import spark.Spark;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Set;
 
 import static spark.Spark.*;
 
@@ -22,6 +24,9 @@ import static spark.Spark.*;
 public class Main {
 
     public static void main(String... args) throws Exception {
+        port(args.length > 0 ? Integer.parseInt(args[0])
+                : spark.Service.SPARK_DEFAULT_PORT);
+
         staticFiles.location("/public");
         secure("localhost.p12", "changeit", null, null);
 
@@ -48,6 +53,8 @@ public class Main {
                 halt(429);
             }
         });
+
+        before(new CorsFilter(Set.of("https://localhost:9999")));
 
         before((request, response) -> {
             if (request.requestMethod().equals("POST") && !"application/json".equals(request.contentType())) {
