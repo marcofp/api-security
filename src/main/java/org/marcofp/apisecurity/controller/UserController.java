@@ -3,11 +3,14 @@ package org.marcofp.apisecurity.controller;
 import com.lambdaworks.crypto.SCryptUtil;
 import org.dalesbred.Database;
 import org.json.JSONObject;
+import spark.Filter;
 import spark.Request;
 import spark.Response;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+
+import static spark.Spark.halt;
 
 public class UserController {
 
@@ -74,5 +77,33 @@ public class UserController {
 
     }
 
+    public void requireAuthentication(Request request,
+                                      Response response) {
+        if (request.attribute("subject") == null) {
+            response.header("WWW-Authenticate",
+                    "Basic realm=\"/\", charset=\"UTF-8\"");
+            halt(401);
+        }
+    }
 
+    public Filter requirePermission(String method, String permission) {
+        return (request, response) -> {
+            if (!method.equalsIgnoreCase(request.requestMethod())) {
+                return;
+            }
+            requireAuthentication(request, response);
+
+            var spaceId = Long.parseLong(request.params(":spaceId"));
+            var username = (String) request.attribute("subject");
+
+            var perms = database.findOptional(String.class,
+                    "SELECT perms FROM permissions " +
+                            "WHERE space_id = ? AND user_id = ?",
+                    spaceId, username).orElse("");
+
+            if (!perms.contains(permission)) {
+                halt(403);
+            }
+        };
+    }
 }

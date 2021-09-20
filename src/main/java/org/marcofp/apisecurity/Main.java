@@ -1,19 +1,20 @@
 package org.marcofp.apisecurity;
 
-import java.nio.file.*;
-
-import org.marcofp.apisecurity.controller.SpaceController;
-import org.dalesbred.*;
+import com.google.common.util.concurrent.RateLimiter;
+import org.dalesbred.Database;
 import org.dalesbred.result.EmptyResultException;
-import org.h2.jdbcx.*;
-import org.json.*;
+import org.h2.jdbcx.JdbcConnectionPool;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.marcofp.apisecurity.controller.AuditController;
+import org.marcofp.apisecurity.controller.ModeratorController;
+import org.marcofp.apisecurity.controller.SpaceController;
 import org.marcofp.apisecurity.controller.UserController;
-import spark.Filter;
 import spark.Request;
 import spark.Response;
-import spark.Spark;
-import com.google.common.util.concurrent.*;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import static spark.Spark.*;
 
@@ -27,39 +28,30 @@ public class Main {
                 "jdbc:h2:mem:natter", "natter", "password");
         var database = Database.forDataSource(datasource);
         createTables(database);
-
         JdbcConnectionPool.create(
                 "jdbc:h2:mem:natter", "natter_api_user", "password");
         database = Database.forDataSource(datasource);
 
-
         var spaceController = new SpaceController(database);
-        Spark.post("/spaces", spaceController::createSpace);
-        post("/spaces/:spaceId/messages", spaceController::postMessage);
-
         var userController = new UserController(database);
-        Spark.post("/users", userController::registerUser);
+        var auditController = new AuditController(database);
+        var moderatorController = new ModeratorController(database);
+
 
         var rateLimiter = RateLimiter.create(2.0d);
 
-        final Filter rateLimiterFilter = ((request, response) -> {
+        before((request, response) -> {
             if (!rateLimiter.tryAcquire()) {
                 response.header("Retry-After", "2");
                 halt(429);
             }
         });
 
-
-        final Filter contentFilter = (request, response) -> {
+        before((request, response) -> {
             if (request.requestMethod().equals("POST") && !"application/json".equals(request.contentType())) {
                 halt(415, new JSONObject().put("error", "Only application/json supported").toString());
             }
 
-        };
-        before(rateLimiterFilter, contentFilter, userController::authenticate);
-
-        after((request, response) -> {
-            response.type("application/json");
         });
 
         afterAfter((request, response) -> {
@@ -72,6 +64,38 @@ public class Main {
                     "default-src 'none'; frame-ancestors 'none'; sandbox");
             response.header("Server", "");
         });
+
+        before(userController::authenticate);
+
+        before(auditController::auditRequestStart);
+        afterAfter(auditController::auditRequestEnd);
+
+        before("/spaces", userController::requireAuthentication);
+        post("/spaces", spaceController::createSpace);
+
+        before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));
+        post("/spaces/:spaceId/messages", spaceController::postMessage);
+
+        before("/spaces/:spaceId/messages/*",
+                userController.requirePermission("GET", "r"));
+        get("/spaces/:spaceId/messages/:msgId", spaceController::readMessage);
+
+        before("/spaces/:spaceId/messages",
+                userController.requirePermission("GET", "r"));
+        get("/spaces/:spaceId/messages", spaceController::findMessages);
+
+        before("/spaces/:spaceId/messages/*",
+                userController.requirePermission("DELETE", "d"));
+        delete("/spaces/:spaceId/messages/:msgId", moderatorController::deletePost);
+
+        before("/spaces/:spaceId/members",
+                userController.requirePermission("POST", "rwd"));
+        post("/spaces/:spaceId/members", spaceController::addMember);
+
+
+        post("/users", userController::registerUser);
+        get("/logs", auditController::readAuditLog);
+
 
         internalServerError(new JSONObject()
                 .put("error", "internal server error").toString());
