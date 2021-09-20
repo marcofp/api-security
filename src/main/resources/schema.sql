@@ -44,7 +44,7 @@ CREATE SEQUENCE audit_id_seq;
 
 CREATE USER natter_api_user PASSWORD 'password';
 
-GRANT SELECT, INSERTON spaces, messages TO natter_api_user;
+GRANT SELECT, INSERT ON spaces, messages TO natter_api_user;
 GRANT SELECT, INSERT ON users TO natter_api_user;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
 GRANT SELECT, INSERT ON permissions TO natter_api_user;

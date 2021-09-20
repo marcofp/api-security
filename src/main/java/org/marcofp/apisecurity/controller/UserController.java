@@ -23,7 +23,7 @@ public class UserController {
     }
 
     public JSONObject registerUser(Request request,
-                                   Response response) throws Exception {
+                                   Response response) {
         var json = new JSONObject(request.body());
         var username = json.getString("username");
         var password = json.getString("password");
@@ -46,6 +46,7 @@ public class UserController {
         response.header("Location", "/users/" + username);
         return new JSONObject().put("username", username);
     }
+
 
     public void authenticate(Request request, Response response) {
         var authHeader = request.headers("Authorization");
@@ -80,8 +81,8 @@ public class UserController {
     public void requireAuthentication(Request request,
                                       Response response) {
         if (request.attribute("subject") == null) {
-            response.header("WWW-Authenticate",
-                    "Basic realm=\"/\", charset=\"UTF-8\"");
+//            response.header("WWW-Authenticate",
+//                    "Basic realm=\"/\", charset=\"UTF-8\"");
             halt(401);
         }
     }

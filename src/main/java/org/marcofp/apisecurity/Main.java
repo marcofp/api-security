@@ -6,12 +6,12 @@ import org.dalesbred.result.EmptyResultException;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.marcofp.apisecurity.controller.AuditController;
-import org.marcofp.apisecurity.controller.ModeratorController;
-import org.marcofp.apisecurity.controller.SpaceController;
-import org.marcofp.apisecurity.controller.UserController;
+import org.marcofp.apisecurity.controller.*;
+import org.marcofp.apisecurity.token.CookieTokenStore;
+import org.marcofp.apisecurity.token.TokenStore;
 import spark.Request;
 import spark.Response;
+import spark.Spark;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -22,6 +22,7 @@ import static spark.Spark.*;
 public class Main {
 
     public static void main(String... args) throws Exception {
+        staticFiles.location("/public");
         secure("localhost.p12", "changeit", null, null);
 
         var datasource = JdbcConnectionPool.create(
@@ -36,7 +37,8 @@ public class Main {
         var userController = new UserController(database);
         var auditController = new AuditController(database);
         var moderatorController = new ModeratorController(database);
-
+        var tokenStore = new CookieTokenStore();
+        var tokenController = new TokenController(tokenStore);
 
         var rateLimiter = RateLimiter.create(2.0d);
 
@@ -66,9 +68,15 @@ public class Main {
         });
 
         before(userController::authenticate);
+        before(tokenController::validateToken);
 
         before(auditController::auditRequestStart);
         afterAfter(auditController::auditRequestEnd);
+
+        before("/sessions", userController::requireAuthentication);
+        post("/sessions", tokenController::login);
+
+        delete("/sessions", tokenController::logout);
 
         before("/spaces", userController::requireAuthentication);
         post("/spaces", spaceController::createSpace);
