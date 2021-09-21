@@ -49,6 +49,7 @@ CREATE TABLE tokens
     expiry     TIMESTAMP     NOT NULL,
     attributes VARCHAR(4096) NOT NULL
 );
+CREATE INDEX expired_token_idx ON tokens(expiry);
 
 CREATE
 USER natter_api_user PASSWORD 'password';

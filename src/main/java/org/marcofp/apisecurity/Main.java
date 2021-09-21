@@ -8,15 +8,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.marcofp.apisecurity.controller.*;
 import org.marcofp.apisecurity.filter.CorsFilter;
-import org.marcofp.apisecurity.token.CookieTokenStore;
 import org.marcofp.apisecurity.token.DatabaseTokenStore;
-import org.marcofp.apisecurity.token.TokenStore;
+import org.marcofp.apisecurity.token.HmacTokenStore;
 import spark.Request;
 import spark.Response;
-import spark.Spark;
 
+import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.KeyStore;
 import java.util.Set;
 
 import static spark.Spark.*;
@@ -43,7 +43,15 @@ public class Main {
         var userController = new UserController(database);
         var auditController = new AuditController(database);
         var moderatorController = new ModeratorController(database);
-        var tokenStore = new DatabaseTokenStore(database);
+        var databaseTokenStore = new DatabaseTokenStore(database);
+
+        var keyPassword = System.getProperty("keystore.password",
+                "changeit").toCharArray();
+        var keyStore = KeyStore.getInstance("PKCS12");
+        keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
+        var macKey = keyStore.getKey("hmac-key", keyPassword);
+
+        var tokenStore = new HmacTokenStore(databaseTokenStore, macKey);
 
         var tokenController = new TokenController(tokenStore);
 
@@ -112,6 +120,12 @@ public class Main {
 
         post("/users", userController::registerUser);
         get("/logs", auditController::readAuditLog);
+
+        before("/expired_tokens", userController::requireAuthentication);
+        delete("/expired_tokens", (request, response) -> {
+            databaseTokenStore.deleteExpiredTokens();
+            return new JSONObject();
+        });
 
 
         internalServerError(new JSONObject()

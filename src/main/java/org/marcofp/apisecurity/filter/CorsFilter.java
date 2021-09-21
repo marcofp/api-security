@@ -23,9 +23,6 @@ public class CorsFilter implements Filter {
 
         if (origin != null && allowedOrigins.contains(origin)) {
             response.header("Access-Control-Allow-Origin", origin);
-            response.header("Access-Control-Allow-Credentials",
-                    "true");
-            response.header("Vary", "Origin");
         }
 
         if (isPreflightRequest(request)){
@@ -34,7 +31,7 @@ public class CorsFilter implements Filter {
             }
 
             response.header("Access-Control-Allow-Headers",
-                    "Content-Type, Authorization, X-CSRF-Token");
+                    "Content-Type, Authorization");
             response.header("Access-Control-Allow-Methods",
                     "GET, POST, DELETE");
             halt(204);

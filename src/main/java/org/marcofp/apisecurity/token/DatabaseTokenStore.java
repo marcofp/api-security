@@ -8,6 +8,8 @@ import java.security.SecureRandom;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class DatabaseTokenStore implements TokenStore {
 
@@ -19,6 +21,11 @@ public class DatabaseTokenStore implements TokenStore {
     public DatabaseTokenStore(final Database database) {
         this.database = database;
         this.secureRandom = new SecureRandom();
+
+        Executors.newSingleThreadScheduledExecutor()
+                .scheduleAtFixedRate(this::deleteExpiredTokens,
+                        10, 10, TimeUnit.MINUTES);
+
     }
 
     @Override
@@ -27,7 +34,7 @@ public class DatabaseTokenStore implements TokenStore {
         var attrs = new JSONObject(token.attributes).toString();
         database.updateUnique("INSERT INTO " +
                         "tokens(token_id, user_id, expiry, attributes) " +
-                        "VALUES(?, ?, ?, ?)", tokenId, token.username,
+                        "VALUES(?, ?, ?, ?)", hash(tokenId), token.username,
                 token.expiry, attrs);
         return tokenId;
     }
@@ -36,14 +43,19 @@ public class DatabaseTokenStore implements TokenStore {
     public Optional<Token> read(Request request, String tokenId) {
         return database.findOptional(this::readToken,
                 "SELECT user_id, expiry, attributes " +
-                        "FROM tokens WHERE token_id = ?", tokenId);
+                        "FROM tokens WHERE token_id = ?", hash(tokenId));
 
     }
 
     @Override
     public void revoke(Request request, String tokenId) {
         database.update("DELETE FROM tokens WHERE token_id = ?",
-                tokenId);
+                hash(tokenId));
+    }
+
+    public void deleteExpiredTokens(){
+        database.update(
+                "DELETE FROM tokens WHERE expiry < current_timestamp");
     }
 
     private String randomId() {
@@ -62,6 +74,12 @@ public class DatabaseTokenStore implements TokenStore {
         }
         return token;
     }
+
+    private String hash(String tokenId) {
+        var hash = CookieTokenStore.sha256(tokenId);
+        return Base64url.encode(hash);
+    }
+
 
 
 }
