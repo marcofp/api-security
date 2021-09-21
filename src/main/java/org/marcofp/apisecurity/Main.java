@@ -9,6 +9,7 @@ import org.json.JSONObject;
 import org.marcofp.apisecurity.controller.*;
 import org.marcofp.apisecurity.filter.CorsFilter;
 import org.marcofp.apisecurity.token.CookieTokenStore;
+import org.marcofp.apisecurity.token.DatabaseTokenStore;
 import org.marcofp.apisecurity.token.TokenStore;
 import spark.Request;
 import spark.Response;
@@ -42,7 +43,8 @@ public class Main {
         var userController = new UserController(database);
         var auditController = new AuditController(database);
         var moderatorController = new ModeratorController(database);
-        var tokenStore = new CookieTokenStore();
+        var tokenStore = new DatabaseTokenStore(database);
+
         var tokenController = new TokenController(tokenStore);
 
         var rateLimiter = RateLimiter.create(2.0d);
