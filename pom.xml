@@ -57,5 +57,16 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
             <artifactId>scrypt</artifactId>
             <version>${scrypt.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>8.19</version>
+        </dependency>
+        <dependency>
+            <groupId>software.pando.crypto</groupId>
+            <artifactId>salty-coffee</artifactId>
+            <version>1.0.4</version>
+        </dependency>
+
     </dependencies>
 </project>

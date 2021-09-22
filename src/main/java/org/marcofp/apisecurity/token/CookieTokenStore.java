@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Optional;
 
-public class CookieTokenStore implements TokenStore {
+public class CookieTokenStore implements SecureTokenStore {
 
     @Override
     public String create(Request request, Token token) {

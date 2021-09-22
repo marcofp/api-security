@@ -1,6 +1,7 @@
 package org.marcofp.apisecurity.controller;
 
 import org.json.JSONObject;
+import org.marcofp.apisecurity.token.SecureTokenStore;
 import org.marcofp.apisecurity.token.TokenStore;
 import spark.Request;
 import spark.Response;
@@ -13,9 +14,9 @@ import static spark.Spark.halt;
 
 public class TokenController {
 
-    private final TokenStore tokenStore;
+    private final SecureTokenStore tokenStore;
 
-    public TokenController(final TokenStore tokenStore) {
+    public TokenController(final SecureTokenStore tokenStore) {
         this.tokenStore = tokenStore;
     }
 
