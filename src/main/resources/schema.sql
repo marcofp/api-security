@@ -31,13 +31,27 @@ CREATE SEQUENCE msg_id_seq;
 CREATE INDEX msg_timestamp_idx ON messages (msg_time);
 CREATE UNIQUE INDEX space_name_idx ON spaces (name);
 
-CREATE TABLE permissions
+CREATE TABLE role_permissions
 (
-    space_id         INT         NOT NULL REFERENCES spaces (space_id),
-    user_or_group_id VARCHAR(30) NOT NULL,
-    perms            VARCHAR(3)  NOT NULL,
+    role_id VARCHAR(30) NOT NULL PRIMARY KEY,
+    perms   VARCHAR(3)  NOT NULL
+);
+
+INSERT INTO role_permissions(role_id, perms)
+VALUES ('owner', 'rwd'),
+       ('moderator', 'rd'),
+       ('member', 'rw'),
+       ('observer', 'r');
+GRANT SELECT ON role_permissions TO natter_api_user;
+
+CREATE TABLE user_roles
+(
+    space_id INT         NOT NULL REFERENCES spaces (space_id),
+    user_id  VARCHAR(30) NOT NULL REFERENCES users (user_id),
+    role_id  VARCHAR(30) NOT NULL REFERENCES role_permissions (role_id),
     PRIMARY KEY (space_id, user_id)
 );
+GRANT SELECT, INSERT, DELETE ON user_roles TO natter_api_user;
 
 CREATE TABLE audit_log
 (
@@ -68,6 +82,5 @@ INSERT
 ON spaces, messages TO natter_api_user;
 GRANT SELECT, INSERT ON users TO natter_api_user;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
-GRANT SELECT, INSERT ON permissions TO natter_api_user;
 GRANT SELECT, INSERT, DELETE ON tokens TO natter_api_user;
 

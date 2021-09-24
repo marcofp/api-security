@@ -105,29 +105,33 @@ public class Main {
 
         before("/spaces/*/messages",
                 tokenController.requireScope("POST", "post_message"));
+        before("/spaces/:spaceId/messages", userController::lookupPermissions);
         before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));
         post("/spaces/:spaceId/messages", spaceController::postMessage);
 
         before("/spaces/*/messages/*",
                 tokenController.requireScope("GET", "read_message"));
+        before("/spaces/:spaceId/messages/*", userController::lookupPermissions);
         before("/spaces/:spaceId/messages/*",
                 userController.requirePermission("GET", "r"));
         get("/spaces/:spaceId/messages/:msgId", spaceController::readMessage);
 
         before("/spaces/*/messages",
                 tokenController.requireScope("GET", "list_messages"));
-        before("/spaces/:spaceId/messages",
-                userController.requirePermission("GET", "r"));
+        before("/spaces/:spaceId/messages", userController::lookupPermissions);
+        before("/spaces/:spaceId/messages", userController.requirePermission("GET", "r"));
         get("/spaces/:spaceId/messages", spaceController::findMessages);
 
         before("/spaces/*/messages/*",
                 tokenController.requireScope("DELETE", "delete_message"));
+        before("/spaces/:spaceId/messages/*", userController::lookupPermissions);
         before("/spaces/:spaceId/messages/*",
                 userController.requirePermission("DELETE", "d"));
         delete("/spaces/:spaceId/messages/:msgId", moderatorController::deletePost);
 
         before("/spaces/*/members",
                 tokenController.requireScope("POST", "add_member"));
+        before("/spaces/:spaceId/members", userController::lookupPermissions);
         before("/spaces/:spaceId/members",
                 userController.requirePermission("POST", "rwd"));
         post("/spaces/:spaceId/members", spaceController::addMember);
