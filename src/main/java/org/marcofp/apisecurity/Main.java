@@ -14,6 +14,7 @@ import spark.Response;
 
 import javax.crypto.SecretKey;
 import java.io.FileInputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyStore;
@@ -44,20 +45,16 @@ public class Main {
         var auditController = new AuditController(database);
         var moderatorController = new ModeratorController(database);
 
-        var keyPassword = System.getProperty("keystore.password",
-                "changeit").toCharArray();
-        var keyStore = KeyStore.getInstance("PKCS12");
-        keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
-        var macKey = keyStore.getKey("hmac-key", keyPassword);
-        var encKey = keyStore.getKey("aes-key", keyPassword);
+        var introspectionEndpoint =
+                URI.create("http://as.example.com:8080/oauth2/introspect");
 
-//        var algorithm = JWSAlgorithm.HS256;
-//        var signer = new MACSigner((SecretKey) macKey);
-//        var verifier = new MACVerifier((SecretKey) macKey);
-//        var naclKey = SecretBox.key(encKey.getEncoded());
-        var tokenStore = new EncryptedJwtTokenStore((SecretKey) encKey, tokenAllowlist);
-
+        var clientId = "test";
+        var clientSecret = "password";
+        var tokenStore = new OAuth2TokenStore(
+                introspectionEndpoint, clientId, clientSecret);
         var tokenController = new TokenController(tokenStore);
+
+
 
         var rateLimiter = RateLimiter.create(2.0d);
 
@@ -95,28 +92,42 @@ public class Main {
         afterAfter(auditController::auditRequestEnd);
 
         before("/sessions", userController::requireAuthentication);
+        before("/sessions",
+                tokenController.requireScope("POST", "full_access"));
         post("/sessions", tokenController::login);
 
         delete("/sessions", tokenController::logout);
 
         before("/spaces", userController::requireAuthentication);
+        before("/spaces",
+                tokenController.requireScope("POST", "create_space"));
         post("/spaces", spaceController::createSpace);
 
+        before("/spaces/*/messages",
+                tokenController.requireScope("POST", "post_message"));
         before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));
         post("/spaces/:spaceId/messages", spaceController::postMessage);
 
+        before("/spaces/*/messages/*",
+                tokenController.requireScope("GET", "read_message"));
         before("/spaces/:spaceId/messages/*",
                 userController.requirePermission("GET", "r"));
         get("/spaces/:spaceId/messages/:msgId", spaceController::readMessage);
 
+        before("/spaces/*/messages",
+                tokenController.requireScope("GET", "list_messages"));
         before("/spaces/:spaceId/messages",
                 userController.requirePermission("GET", "r"));
         get("/spaces/:spaceId/messages", spaceController::findMessages);
 
+        before("/spaces/*/messages/*",
+                tokenController.requireScope("DELETE", "delete_message"));
         before("/spaces/:spaceId/messages/*",
                 userController.requirePermission("DELETE", "d"));
         delete("/spaces/:spaceId/messages/:msgId", moderatorController::deletePost);
 
+        before("/spaces/*/members",
+                tokenController.requireScope("POST", "add_member"));
         before("/spaces/:spaceId/members",
                 userController.requirePermission("POST", "rwd"));
         post("/spaces/:spaceId/members", spaceController::addMember);

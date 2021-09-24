@@ -2,6 +2,7 @@ package org.marcofp.apisecurity.controller;
 
 import com.lambdaworks.crypto.SCryptUtil;
 import org.dalesbred.Database;
+import org.dalesbred.query.QueryBuilder;
 import org.json.JSONObject;
 import spark.Filter;
 import spark.Request;
@@ -9,6 +10,7 @@ import spark.Response;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 
 import static spark.Spark.halt;
 
@@ -74,6 +76,13 @@ public class UserController {
         if (hash.isPresent() &&
                 SCryptUtil.check(password, hash.get())) {
             request.attribute("subject", username);
+            // Look up all groups that the user belongs to
+            var groups = database.findAll(String.class,
+                    "SELECT DISTINCT group_id FROM group_members " +
+                            "WHERE user_id = ?", username);
+            // Set the user’s groups
+            request.attribute("groups", groups);
+
         }
 
     }
@@ -95,11 +104,20 @@ public class UserController {
 
             var spaceId = Long.parseLong(request.params(":spaceId"));
             var username = (String) request.attribute("subject");
+            List<String> groups = request.attribute("groups");
 
-            var perms = database.findOptional(String.class,
+            var queryBuilder = new QueryBuilder(
                     "SELECT perms FROM permissions " +
-                            "WHERE space_id = ? AND user_id = ?",
-                    spaceId, username).orElse("");
+                            "WHERE space_id = ? " +
+                            "AND (user_or_group_id = ?", spaceId, username);
+
+            for (var group : groups) {
+                queryBuilder.append(" OR user_or_group_id = ?", group);
+            }
+
+            queryBuilder.append(")");
+            var perms = database.findAll(String.class,
+                    queryBuilder.build());
 
             if (!perms.contains(permission)) {
                 halt(403);

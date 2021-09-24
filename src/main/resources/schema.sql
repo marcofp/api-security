@@ -4,6 +4,14 @@ CREATE TABLE users
     pw_hash VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE group_members
+(
+    group_id VARCHAR(30) NOT NULL,
+    user_id  VARCHAR(30) NOT NULL REFERENCES users (user_id)
+);
+CREATE INDEX group_member_user_idx ON group_members (user_id);
+
+
 CREATE TABLE spaces
 (
     space_id INT PRIMARY KEY,
@@ -25,9 +33,9 @@ CREATE UNIQUE INDEX space_name_idx ON spaces (name);
 
 CREATE TABLE permissions
 (
-    space_id INT         NOT NULL REFERENCES spaces (space_id),
-    user_id  VARCHAR(30) NOT NULL REFERENCES users (user_id),
-    perms    VARCHAR(3)  NOT NULL,
+    space_id         INT         NOT NULL REFERENCES spaces (space_id),
+    user_or_group_id VARCHAR(30) NOT NULL,
+    perms            VARCHAR(3)  NOT NULL,
     PRIMARY KEY (space_id, user_id)
 );
 
@@ -49,7 +57,7 @@ CREATE TABLE tokens
     expiry     TIMESTAMP     NOT NULL,
     attributes VARCHAR(4096) NOT NULL
 );
-CREATE INDEX expired_token_idx ON tokens(expiry);
+CREATE INDEX expired_token_idx ON tokens (expiry);
 
 CREATE
 USER natter_api_user PASSWORD 'password';
